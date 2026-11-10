@@ -108,6 +108,9 @@ p{margin:0}
 #netBar{display:none;align-items:center;gap:8px;background:rgba(79,179,191,.15);border:1px solid rgba(79,179,191,.4);border-radius:10px;padding:6px 10px;font-size:12px;color:#9fe0e8;margin-bottom:8px}
 #netBar span{flex:1}
 #goHunt:disabled{opacity:.5}
+#rankRow{display:flex;gap:8px}
+.rk{flex:1;min-height:44px;border-radius:12px;border:2px solid transparent;background:var(--panel);color:var(--text);font-weight:700;font-size:15px;cursor:pointer}
+.rk.on{border-color:var(--c);color:var(--c)}
 #monBox{padding:8px 12px 10px;display:flex;flex-direction:column;gap:6px}
 #monHead{display:flex;align-items:center;gap:8px}
 #monName{font-size:14px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -274,6 +277,8 @@ p{margin:0}
     <p class="sect">武器を選ぶ</p>
     <div id="wGrid" class="wgrid"></div>
     <div class="card" style="padding:10px"><div id="wInfo" style="display:flex;flex-direction:column;gap:8px;padding:4px 4px 2px"></div></div>
+    <p class="sect">難易度</p>
+    <div id="rankRow"></div>
     <p class="sect">狩猟対象</p>
     <div id="mList" style="display:flex;flex-direction:column;gap:10px"></div>
   </div>
@@ -332,6 +337,9 @@ const basic = (c, o = 1) => new THREE.MeshBasicMaterial({ color: c, transparent:
 const ARENAS = {
   grass: { sky: '#8FB0B4', fog: [32, 75], outer: '#4E6B45', inner: '#5A7A4E', hemi: ['#dfefff', '#3b4a2f'], sun: '#fff4e0', prop: 'tree', rock: '#6b6a5e', leaf: '#2f5a3a' },
   snow: { sky: '#B8C9D6', fog: [26, 65], outer: '#AFC0CB', inner: '#D3DEE6', hemi: ['#eef6ff', '#7d8c99'], sun: '#ffffff', prop: 'pine', rock: '#8a98a3', leaf: '#3c5a5a' },
+  swamp: { sky: '#7E8F78', fog: [24, 62], outer: '#3F4A33', inner: '#56603F', hemi: ['#e6f2d6', '#2c3322'], sun: '#f2f0d0', prop: 'tree', rock: '#4f5444', leaf: '#3e5a2a', lava: '#6fbf3a' },
+  ruins: { sky: '#2E3046', fog: [26, 66], outer: '#33354A', inner: '#4A4B5E', hemi: ['#c9cdf5', '#22232e'], sun: '#e8e4ff', prop: 'spire', rock: '#5a5a6e', leaf: '#5a4a8a', lava: '#ffe066' },
+  abyss: { sky: '#120E1A', fog: [22, 56], outer: '#1B1622', inner: '#2C2434', hemi: ['#b89cff', '#0e0a14'], sun: '#d8c4ff', prop: 'spire', rock: '#2a2233', leaf: '#6a2a9a', lava: '#a05aff' },
   volcano: { sky: '#4A2E2A', fog: [24, 60], outer: '#2E2522', inner: '#4A3B36', hemi: ['#ffb27a', '#2a1a16'], sun: '#ffc48a', prop: 'spire', rock: '#3a2f2b', leaf: '#a33a1a' },
 };
 let arenaGroup = null;
@@ -357,7 +365,7 @@ function buildArena(key) {
       rock.position.set(x, 0.6, z); rock.rotation.set(i, i * 2, 0); rock.castShadow = true; arenaGroup.add(rock);
     } else if (A.prop === 'spire') {
       const s = new THREE.Mesh(new THREE.ConeGeometry(0.9, 4 + (i % 5), 6), mat(A.rock)); s.position.set(x, 2, z); s.castShadow = true; arenaGroup.add(s);
-      if (i % 4 === 0) { const lava = new THREE.Mesh(new THREE.CircleGeometry(1.6, 12), basic('#ff6a2a')); lava.rotation.x = -Math.PI / 2; lava.position.set(x * 0.95, 0.03, z * 0.95); arenaGroup.add(lava); }
+      if (i % 4 === 0) { const lava = new THREE.Mesh(new THREE.CircleGeometry(1.6, 12), basic(A.lava || '#ff6a2a')); lava.rotation.x = -Math.PI / 2; lava.position.set(x * 0.95, 0.03, z * 0.95); arenaGroup.add(lava); }
     } else {
       const t = new THREE.Group();
       const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 1.6), mat('#5b4532')); tr.position.y = 0.8;
@@ -567,9 +575,61 @@ function buildIgnadra() {
   return R;
 }
 
+function buildGazamiro() {
+  const R = rigBase(); const shell = new THREE.MeshLambertMaterial({ color: '#4E6B4A' }), soft = new THREE.MeshLambertMaterial({ color: '#9BAF6A' }), dark = mat('#2E3A2A'), moss = mat('#7FA34A');
+  R.skins = [[shell, '#4E6B4A', '#6b7a2a'], [soft, '#9BAF6A', '#c2d65a']];
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), shell); body.scale.set(2.2, 1.0, 2.0); body.position.y = 1.5; body.castShadow = true; R.body.add(body);
+  for (let i = 0; i < 7; i++) { const b = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35 + (i % 3) * 0.12), moss); const a = i * 0.9; b.position.set(Math.cos(a) * 1.1, 2.35, Math.sin(a) * 1.1); R.body.add(b); }
+  const head = new THREE.Group(); head.position.set(2.1, 1.4, 0); R.head = head; R.body.add(head);
+  const skull = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 1.2), soft); skull.castShadow = true;
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 1.0), dark); jaw.position.set(0.2, -0.38, 0); R.jaw = jaw;
+  R.eyeM = basic('#d8ff5a'); R.eyeCols = ['#d8ff5a', '#ff4a3a'];
+  const e1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5), dark); e1.position.set(0.2, 0.5, 0.35); const e1b = new THREE.Mesh(new THREE.SphereGeometry(0.12), R.eyeM); e1b.position.set(0.2, 0.78, 0.35);
+  const e2 = e1.clone(); e2.position.z = -0.35; const e2b = e1b.clone(); e2b.position.z = -0.35;
+  head.add(skull, jaw, e1, e1b, e2, e2b);
+  for (const side of [1, -1]) { // big claws
+    const arm = new THREE.Group(); arm.position.set(1.7, 1.3, 1.4 * side);
+    const up = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 1.2, 7), shell); up.rotation.x = side * 0.9; up.position.z = side * 0.4;
+    const claw = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), shell); claw.scale.set(1.5, 0.7, 0.9); claw.position.set(0.6, 0, side * 0.9); claw.castShadow = true;
+    const pin = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 6), dark); pin.rotation.z = -Math.PI / 2; pin.position.set(1.4, 0.1, side * 0.9);
+    arm.add(up, claw, pin); R.body.add(arm); R.extra.push(arm);
+  }
+  for (const [x, z] of [[0.9, 1.6], [0.9, -1.6], [-0.2, 1.8], [-0.2, -1.8], [-1.2, 1.5], [-1.2, -1.5]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 1.4, 6), dark); l.position.set(x, 0.65, z); l.rotation.x = z > 0 ? -0.45 : 0.45; l.castShadow = true; R.body.add(l); R.legs.push(l); }
+  addTail(R, new THREE.Vector3(-1.9, 1.3, 0), 2, 0.45, shell, new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), moss), 0.7);
+  return R;
+}
+function buildZelvolt() {
+  const R = rigBase(); const fur = new THREE.MeshLambertMaterial({ color: '#3B3F6E' }), mane = new THREE.MeshLambertMaterial({ color: '#E8D27A' }), dark = mat('#1E2036'), bolt = basic('#ffe066');
+  R.skins = [[fur, '#3B3F6E', '#5a2f7a'], [mane, '#E8D27A', '#fff2a8']];
+  const torso = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 14), fur); torso.scale.set(2.1, 1.0, 1.0); torso.position.y = 1.8; torso.castShadow = true; R.body.add(torso);
+  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), mane); chest.position.set(1.3, 1.9, 0); chest.scale.set(1.1, 1.15, 1.05); R.body.add(chest);
+  const head = new THREE.Group(); head.position.set(2.3, 2.4, 0); R.head = head; R.body.add(head);
+  const skull = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.75, 0.8), fur); skull.castShadow = true;
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.42, 0.55), dark); snout.position.set(0.75, -0.12, 0);
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.14, 0.45), dark); jaw.position.set(0.7, -0.4, 0); R.jaw = jaw;
+  R.eyeM = basic('#ffe066'); R.eyeCols = ['#ffe066', '#ffffff'];
+  const e1 = new THREE.Mesh(new THREE.SphereGeometry(0.09), R.eyeM); e1.position.set(0.45, 0.15, 0.33); const e2 = e1.clone(); e2.position.z = -0.33;
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.5, 6), bolt); horn.position.set(0.2, 0.85, 0); horn.rotation.z = -0.5;
+  const h2 = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.9, 6), bolt); h2.position.set(-0.1, 0.55, 0.32); h2.rotation.set(0.4, 0, -0.9); const h3 = h2.clone(); h3.position.z = -0.32; h3.rotation.x = -0.4;
+  head.add(skull, snout, jaw, e1, e2, horn, h2, h3);
+  for (let i = 0; i < 6; i++) { const s = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.9, 4), bolt); s.position.set(0.9 - i * 0.5, 2.7, (i % 2 ? 0.2 : -0.2)); s.rotation.z = 0.5; R.body.add(s); R.extra.push(s); }
+  for (const [x, z] of [[1.2, 0.6], [1.2, -0.6], [-1.2, 0.6], [-1.2, -0.6]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.18, 1.6, 7), dark); l.position.set(x, 0.8, z); l.castShadow = true; R.body.add(l); R.legs.push(l); }
+  addTail(R, new THREE.Vector3(-1.9, 2.0, 0), 4, 0.36, fur, new THREE.Mesh(new THREE.OctahedronGeometry(0.45), bolt), 0.85);
+  return R;
+}
+function buildNoxvarn() {
+  const R = buildIgnadra();
+  const recolor = { '#7A2E22': '#2A2236', '#D98A4E': '#5A4A72', '#F2C14E': '#B48CFF', '#4A1E18': '#160F1F' };
+  R.root.traverse(o => { if (o.material && o.material.color) { const h = '#' + o.material.color.getHexString().toUpperCase(); for (const [a, b] of Object.entries(recolor)) if (h === a.toUpperCase()) o.material.color.set(b); } });
+  R.skins = [[R.skins[0][0], '#2A2236', '#4a1f5e'], [R.skins[1][0], '#5A4A72', '#9a6ad8']];
+  R.eyeCols = ['#c49cff', '#ff4ad8']; R.eyeM.color.set('#c49cff'); if (R.mouth) R.mouth.material.color.set('#c084fc');
+  R.root.scale.setScalar(1.18); R.wings.forEach(w => w.scale.set(1.35, 1, 1.35));
+  return R;
+}
+
 const MONS = {
   golmuga: {
-    id: 'golmuga', name: '岩背獣ゴルムガ', stars: 1, hp: 4600, r: 2.0, spd: 2.4, headOff: 2.7, arena: 'grass', build: buildGolmuga, color: '#8A7556',
+    id: 'golmuga', name: '岩背獣ゴルムガ', stars: 1, hp: 3600, dmgMul: 0.6, windMul: 1.3, waitMul: 1.45, r: 2.0, spd: 2.4, headOff: 2.7, arena: 'grass', build: buildGolmuga, color: '#8A7556',
     desc: '岩の背を持つ重量級。突進は壁にぶつけると目を回す。', weak: '頭',
     moves: [
       { type: 'charge', w: 3, min: 4, max: 99, wind: 0.85, dmg: 28, len: 12, spd: 14 },
@@ -579,7 +639,7 @@ const MONS = {
     ],
   },
   verg: {
-    id: 'verg', name: '蒼牙狼ヴェルグ', stars: 2, hp: 5600, r: 1.5, spd: 4.6, headOff: 2.3, arena: 'snow', build: buildVerg, color: '#5E7FA3',
+    id: 'verg', name: '蒼牙狼ヴェルグ', stars: 2, hp: 5600, dmgMul: 0.95, windMul: 1.05, waitMul: 1.05, r: 1.5, spd: 4.6, headOff: 2.3, arena: 'snow', build: buildVerg, color: '#5E7FA3',
     desc: '雪原を駆ける俊敏な獣。飛びかかりと連続噛みつき、氷柱を降らせる。', weak: '頭',
     moves: [
       { type: 'pounce', w: 3, min: 3, max: 14, wind: 0.6, dmg: 26, rad: 2.7, act: 0.55 },
@@ -590,7 +650,7 @@ const MONS = {
     ],
   },
   ignadra: {
-    id: 'ignadra', name: '炎角竜イグナドラ', stars: 3, hp: 7500, r: 2.4, spd: 2.7, headOff: 3.4, arena: 'volcano', build: buildIgnadra, color: '#7A2E22',
+    id: 'ignadra', name: '炎角竜イグナドラ', stars: 3, hp: 7800, dmgMul: 1.15, windMul: 0.95, waitMul: 0.95, r: 2.4, spd: 2.7, headOff: 3.4, arena: 'volcano', build: buildIgnadra, color: '#7A2E22',
     desc: '火山に棲む竜。炎の息、降りそそぐ火球、怒ると技が速くなる。', weak: '頭',
     moves: [
       { type: 'breath', w: 3, min: 0, max: 11, wind: 0.85, dmg: 14, len: 10, arc: 0.9, act: 1.3 },
@@ -598,6 +658,40 @@ const MONS = {
       { type: 'charge', w: 2, min: 5, max: 99, wind: 0.8, dmg: 32, len: 13, spd: 15 },
       { type: 'circle', w: 2, min: 0, max: 5.4, wind: 0.7, dmg: 26, rad: 5.4, act: 0.4 },
       { type: 'ring', w: 1, min: 0, max: 7.2, wind: 0.9, dmg: 30, rad: 7.2, act: 0.55 },
+    ],
+  },
+  gazamiro: {
+    id: 'gazamiro', name: '沼鎧蟹ガザミロ', stars: 2, hp: 6200, dmgMul: 0.95, windMul: 1.05, waitMul: 1.1, r: 2.1, spd: 2.2, headOff: 2.4, arena: 'swamp', build: buildGazamiro, color: '#4E6B4A',
+    desc: '沼に潜む硬い甲殻の獣。大きなハサミで薙ぎ払い、毒の泡を吐き散らす。', weak: '頭',
+    moves: [
+      { type: 'bite', w: 3, min: 0, max: 4.8, wind: 0.6, dmg: 20, len: 3.2, arc: 2.0, rep: 2 },
+      { type: 'circle', w: 3, min: 0, max: 5.0, wind: 0.8, dmg: 24, rad: 4.8, act: 0.4 },
+      { type: 'rain', w: 2, min: 0, max: 99, wind: 0.9, dmg: 20, n: 6, rad: 2.0, delay: 1.1, vis: 'poison' },
+      { type: 'charge', w: 1.5, min: 5, max: 99, wind: 0.9, dmg: 26, len: 11, spd: 12 },
+      { type: 'ring', w: 1, min: 0, max: 6.5, wind: 1.0, dmg: 24, rad: 6.2, act: 0.55 },
+    ],
+  },
+  zelvolt: {
+    id: 'zelvolt', name: '雷角獣ゼルヴォルト', stars: 4, hp: 9800, dmgMul: 1.3, windMul: 0.85, waitMul: 0.85, r: 1.8, spd: 5.2, headOff: 2.6, arena: 'ruins', build: buildZelvolt, color: '#3B3F6E',
+    desc: '遺跡に住む雷の獣。素早い飛びかかりと突進、落雷を呼ぶ。怒るとさらに速い。', weak: '頭',
+    moves: [
+      { type: 'pounce', w: 3, min: 3, max: 15, wind: 0.55, dmg: 30, rad: 3.0, act: 0.5 },
+      { type: 'charge', w: 2, min: 5, max: 99, wind: 0.55, dmg: 30, len: 16, spd: 23 },
+      { type: 'rain', w: 2, min: 0, max: 99, wind: 0.8, dmg: 30, n: 7, rad: 2.0, delay: 0.9, vis: 'bolt' },
+      { type: 'bite', w: 2, min: 0, max: 4.4, wind: 0.4, dmg: 22, len: 3.2, arc: 1.4, rep: 2 },
+      { type: 'ring', w: 2, min: 0, max: 7.0, wind: 0.75, dmg: 32, rad: 7.0, act: 0.45 },
+    ],
+  },
+  noxvarn: {
+    id: 'noxvarn', name: '黒鱗古竜ノクスヴァーン', stars: 5, hp: 13000, dmgMul: 1.5, windMul: 0.8, waitMul: 0.75, r: 2.8, spd: 3.2, headOff: 4.0, arena: 'abyss', build: buildNoxvarn, color: '#2A2236',
+    desc: '深淵に眠る古き竜。紫の炎、空を覆う火球、すべてを薙ぐ尾。最強の相手。', weak: '頭',
+    moves: [
+      { type: 'breath', w: 3, min: 0, max: 13, wind: 0.75, dmg: 18, len: 12.5, arc: 1.1, act: 1.5 },
+      { type: 'rain', w: 2.5, min: 0, max: 99, wind: 0.75, dmg: 34, n: 9, rad: 2.4, delay: 1.0, vis: 'dark' },
+      { type: 'charge', w: 2, min: 5, max: 99, wind: 0.7, dmg: 38, len: 15, spd: 18 },
+      { type: 'circle', w: 2, min: 0, max: 6.2, wind: 0.6, dmg: 32, rad: 6.2, act: 0.4 },
+      { type: 'ring', w: 1.5, min: 0, max: 8.4, wind: 0.8, dmg: 36, rad: 8.4, act: 0.5 },
+      { type: 'pounce', w: 1.5, min: 4, max: 16, wind: 0.65, dmg: 40, rad: 3.4, act: 0.6 },
     ],
   },
 };
@@ -615,7 +709,9 @@ function newMonster(def) {
     flinchAcc: 0, move: null, wait: 2.0, flash: 0, dead: false, deathT: 0, crashT: 0, rig: def.build() };
 }
 function headPos(m) { const o = m.def.headOff; return { x: m.x + Math.cos(m.face) * o, z: m.z + Math.sin(m.face) * o }; }
-function mDmg(m, v) { return Math.round(v * 0.72 * (m.rage ? 1.15 : 1)); }
+const RANKS = [{ name: '下位', hp: 1, dmg: 1, wind: 1, col: '#5CC98A' }, { name: '上位', hp: 1.55, dmg: 1.35, wind: 0.9, col: '#F0A23B' }, { name: '極', hp: 2.2, dmg: 1.8, wind: 0.8, col: '#E2574C' }];
+function mRank(m) { return RANKS[m.rank || 0]; }
+function mDmg(m, v) { return Math.round(v * 0.72 * (m.def.dmgMul || 1) * mRank(m).dmg * (m.rage ? 1.15 : 1)); }
 function mSpd(m) { return m.rage ? 1.3 : 1; }
 function turnTo(m, tx, tz, rate) { const a = Math.atan2(tz - m.z, tx - m.x); m.face += clamp(angDiff(a, m.face), -rate, rate); }
 function clearMove(m) { if (!m.move) return; (m.move.decals || []).forEach(killDecal); m.move = null; if (m.rig.mouth) m.rig.mouth.visible = false; }
@@ -639,7 +735,7 @@ function chooseMove(m) {
 }
 function startMove(m, def, rep, net) {
   const k = m.rage ? 0.75 : 1;
-  const mv = { def, type: def.type, phase: 'wind', t: def.wind * 1.15 * k * (rep ? 0.7 : 1), rep: rep ?? (def.rep || 1), decals: [], hit: false, tick: 0 };
+  const mv = { def, type: def.type, phase: 'wind', t: def.wind * 1.15 * (m.def.windMul || 1) * mRank(m).wind * k * (rep ? 0.7 : 1), rep: rep ?? (def.rep || 1), decals: [], hit: false, tick: 0 };
   m.move = mv; const p = mTarget();
   if (net) { mv.t = net.t; mv.rep = net.rep; }
   switch (def.type) {
@@ -733,8 +829,11 @@ function spawnRain(m, def, pts) {
 }
 const hazards = [];
 function spawnHazard(x, z, r, delay, dmg, vis) {
-  const dc = decal('circle', { x, z, r, color: vis === 'ice' ? '#7fd6ff' : '#ff7a2a' });
-  const mesh = vis === 'ice' ? new THREE.Mesh(new THREE.ConeGeometry(r * 0.5, 2.6, 6), mat('#cfefff')) : new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 10), basic('#ff8a2a'));
+  const HC = { ice: '#7fd6ff', fire: '#ff7a2a', poison: '#8fdc4a', bolt: '#ffe066', dark: '#b07aff' }, MC = { fire: '#ff8a2a', poison: '#7fd04a', dark: '#9a5aff' };
+  const dc = decal('circle', { x, z, r, color: HC[vis] || '#ff7a2a' });
+  const mesh = vis === 'ice' ? new THREE.Mesh(new THREE.ConeGeometry(r * 0.5, 2.6, 6), mat('#cfefff'))
+    : vis === 'bolt' ? new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.35, 6, 6), basic('#fff3a0'))
+    : new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 10), basic(MC[vis] || '#ff8a2a'));
   if (vis === 'ice') mesh.rotation.x = Math.PI;
   mesh.position.set(x, 18, z); mesh.castShadow = true; scene.add(mesh);
   hazards.push({ x, z, r, t: delay, t0: delay, dmg, vis, dc, mesh, done: false, life: 0 });
@@ -743,9 +842,9 @@ function updateHazards(dt) {
   const p = G && G.p;
   for (const h of hazards) {
     if (!h.done) {
-      h.t -= dt; h.mesh.position.y = Math.max(h.vis === 'ice' ? 1.3 : 0.4, 18 * (h.t / h.t0));
+      h.t -= dt; h.mesh.position.y = Math.max(h.vis === 'ice' ? 1.3 : h.vis === 'bolt' ? 3 : 0.4, 18 * (h.t / h.t0));
       if (h.t <= 0) { h.done = true; h.life = h.vis === 'ice' ? 2.5 : 0.25; killDecal(h.dc); shake = Math.max(shake, 0.35); sfx(h.vis === 'ice' ? 'guard' : 'boom');
-        sparks(h.x, 0.5, h.z, h.vis === 'ice' ? '#dff6ff' : '#ffb347', 14, 8, 0.5, 1.4);
+        sparks(h.x, 0.5, h.z, ({ ice: '#dff6ff', poison: '#b6f07a', bolt: '#fff3a0', dark: '#d2b4ff' })[h.vis] || '#ffb347', 14, 8, 0.5, 1.4);
         if (p && Math.hypot(p.x - h.x, p.z - h.z) < h.r + 0.4 && p.y < 1) { const a = Math.atan2(p.z - h.z, p.x - h.x); hitP(h.dmg, Math.cos(a), Math.sin(a), h); } }
     } else { h.life -= dt; if (h.life <= 0) scene.remove(h.mesh); else if (h.vis !== 'ice') h.mesh.scale.setScalar(1 + (0.25 - h.life) * 8); }
   }
@@ -763,7 +862,7 @@ function updateMonster(dt) {
   if (m.roarT > 0) { m.roarT -= dt; roarCover(m); return; }
   if (m.move) { updateMove(m, dt); }
   else {
-    const p = mTarget(); m.wait -= dt * 0.8; turnTo(m, p.x, p.z, 2.2 * dt);
+    const p = mTarget(); m.wait -= dt * 0.8 / (m.def.waitMul || 1); turnTo(m, p.x, p.z, 2.2 * dt);
     const d = d2(p, m);
     if (d > m.r + 2.2) { const sp = m.def.spd * mSpd(m); m.x += Math.cos(m.face) * sp * dt; m.z += Math.sin(m.face) * sp * dt; m.walk = 1; } else m.walk = 0;
     if (m.wait <= 0) { pickTarget(m); const c = chooseMove(m); if (c) startMove(m, c); else m.wait = 0.5; }
@@ -2118,9 +2217,10 @@ function renderSelect() {
   $('wPrevName').textContent = w.name; $('wPrevTag').innerHTML = `<span class="tag">${w.ranged ? '遠距離' : w.kind === 'blunt' ? '打撃' : '斬撃'}</span><span class="tag">${w.type}</span>`;
   $('wInfo').innerHTML = `<p class="muted" style="color:#E3E6E7;font-size:14px">${w.desc}</p><p class="muted" style="white-space:pre-line">${w.help.replace(/ \/ /g, '\n')}</p>`;
   Preview.set(w.id);
-  $('mList').innerHTML = Object.values(MONS).map(m => { const b = SAVE.best[SAVE.w + '|' + m.id];
-    return `<button class="card${m.id === SAVE.m ? ' sel' : ''}" data-m="${m.id}" style="text-align:left;border:none;cursor:pointer"><div class="qhead"><div class="qicon" style="background:${m.color}"><svg aria-hidden="true" width="34" height="34" viewBox="0 0 34 34"><path d="M5 24 C8 14 16 10 22 12 C27 14 30 19 30 24 Z" fill="#14181A" opacity=".55"/><circle cx="25" cy="17" r="2" fill="#FFD166"/></svg></div><div style="flex:1;min-width:0"><p class="stars">${'★'.repeat(m.stars)}<span style="color:#3A454B">${'★'.repeat(3 - m.stars)}</span></p><p class="qname">${m.name}</p></div></div><p class="muted">${m.desc}</p><div class="tags"><span class="tag">体力 ${m.hp}</span><span class="tag">弱点 ${m.weak}</span><span class="tag">${b ? 'この武器の最速 ' + fmt(b) : '未討伐(この武器)'}</span></div></button>`; }).join('');
-  $('loLine').innerHTML = `<b>${w.name}</b><br>${MONS[SAVE.m].name}`;
+  $('mList').innerHTML = Object.values(MONS).sort((a, b) => a.stars - b.stars).map(m => { const b = SAVE.best[SAVE.w + '|' + m.id];
+    return `<button class="card${m.id === SAVE.m ? ' sel' : ''}" data-m="${m.id}" style="text-align:left;border:none;cursor:pointer"><div class="qhead"><div class="qicon" style="background:${m.color}"><svg aria-hidden="true" width="34" height="34" viewBox="0 0 34 34"><path d="M5 24 C8 14 16 10 22 12 C27 14 30 19 30 24 Z" fill="#14181A" opacity=".55"/><circle cx="25" cy="17" r="2" fill="#FFD166"/></svg></div><div style="flex:1;min-width:0"><p class="stars">${'★'.repeat(m.stars)}<span style="color:#3A454B">${'★'.repeat(Math.max(0, 5 - m.stars))}</span></p><p class="qname">${m.name}</p></div></div><p class="muted">${m.desc}</p><div class="tags"><span class="tag">体力 ${m.hp}</span><span class="tag">弱点 ${m.weak}</span><span class="tag">${b ? 'この武器の最速 ' + fmt(b) : '未討伐(この武器)'}</span></div></button>`; }).join('');
+  $('rankRow').innerHTML = RANKS.map((r, i) => `<button class="rk${(SAVE.rank | 0) === i ? ' on' : ''}" data-r="${i}" style="--c:${r.col}">${r.name}</button>`).join('');
+  $('loLine').innerHTML = `<b>${w.name}</b><br>${RANKS[SAVE.rank | 0].name} ${MONS[SAVE.m].name}`;
 }
 function wIcon(id) {
   const s = 'stroke="#F3EFE6" stroke-width="2.4" stroke-linecap="round" fill="none"';
@@ -2136,6 +2236,7 @@ function wIcon(id) {
   return I[id] || '';
 }
 $('wGrid').addEventListener('click', e => { const b = e.target.closest('[data-w]'); if (!b) return; SAVE.w = b.dataset.w; persist(); renderSelect(); if (typeof NET !== 'undefined') NET.setWeapon(SAVE.w); });
+$('rankRow').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (!b || (typeof NET !== 'undefined' && NET.guest)) return; SAVE.rank = +b.dataset.r; persist(); renderSelect(); });
 $('mList').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; SAVE.m = b.dataset.m; persist(); renderSelect(); });
 $('startBtn').onclick = () => { audioInit(); renderSelect(); show('sSelect'); };
 $('selBack').onclick = () => { show('sTitle'); };
@@ -2167,12 +2268,12 @@ function startHunt() {
   const def = MONS[SAVE.m]; W = WMAP[SAVE.w];
   buildArena(def.arena);
   const p = newPlayer(); p.w = {}; if (W.init) W.init(p);
-  const m = newMonster(def); m.roarT = 1.6; m.wait = 1.6;
+  const m = newMonster(def); m.roarT = 1.6; m.wait = 1.6; m.rank = clamp(SAVE.rank | 0, 0, 2); m.hp = m.maxHp = Math.round(def.hp * RANKS[m.rank].hp);
   const rig = makeHunter(); WM.build[W.id](rig);
   G = { p, m, rig, time: 0, faints: 0, end: null, dmg: 0, hits: 0, lastDt: 0.016 };
   NET.setupHunt();
   if (NET.on) {
-    const n = NET.roster.size; m.hp = m.maxHp = Math.round(def.hp * [1, 1.5, 1.9, 2.3][clamp(n, 1, 4) - 1]);
+    const n = NET.roster.size; m.hp = m.maxHp = Math.round(m.maxHp * [1, 1.5, 1.9, 2.3][clamp(n, 1, 4) - 1]);
     const me = NET.roster.get(NET.myId), sl = me ? me.slot : 0; p.x = (sl - 1.5) * 2.2;
     rig.root.children.forEach(o => { if (o.geometry && (o.geometry.type === 'RingGeometry' || o.geometry.type === 'ConeGeometry')) { o.material = o.material.clone(); o.material.color.set(NET.color(NET.myId)); } });
   }
@@ -2186,7 +2287,7 @@ function startHunt() {
 function endHunt(res) {
   if (!G || G.end) return; G.end = res; NET.onEnd(res);
   const g = G;
-  if (res === 'win') { banner('討伐完了!', 2.6); sfx('win'); const k = g.p ? (W.id + '|' + g.m.def.id) : ''; const t = g.time; if (!SAVE.best[k] || t < SAVE.best[k]) { SAVE.best[k] = t; g.newBest = true; persist(); } }
+  if (res === 'win') { banner('討伐完了!', 2.6); sfx('win'); const k = g.p ? (W.id + '|' + g.m.def.id + (g.m.rank ? '|' + g.m.rank : '')) : ''; const t = g.time; if (!SAVE.best[k] || t < SAVE.best[k]) { SAVE.best[k] = t; g.newBest = true; persist(); } }
   else { banner('クエスト失敗', 2.6); }
   setTimeout(() => { if (G === g) showResult(res, g); }, 3000);
 }
@@ -2194,9 +2295,9 @@ function showResult(res, g) {
   const t = g.time, def = g.m.def;
   $('rEyebrow').textContent = res === 'win' ? 'QUEST CLEAR' : 'QUEST FAILED';
   $('rTitle').textContent = res === 'win' ? '討伐成功' : 'クエスト失敗'; $('rTitle').style.color = res === 'win' ? 'var(--accent)' : 'var(--mon)';
-  $('rMon').textContent = def.name + ' / ' + W.name;
+  $('rMon').textContent = RANKS[g.m.rank || 0].name + ' ' + def.name + ' / ' + W.name;
   $('rTime').textContent = fmt(t) + (g.newBest ? ' 最速!' : '');
-  const lim = [150, 270, 420].map(x => x * (0.8 + def.stars * 0.2));
+  const lim = [150, 270, 420].map(x => x * (0.8 + def.stars * 0.2) * (1 + (g.m.rank || 0) * 0.3));
   $('rRank').textContent = res !== 'win' ? '-' : t < lim[0] ? 'S' : t < lim[1] ? 'A' : t < lim[2] ? 'B' : 'C';
   $('rLoot').innerHTML = `<div class="mat"><span class="sw" style="background:var(--accent)"></span>与えたダメージ<b>${g.dmg}</b></div><div class="mat"><span class="sw" style="background:var(--cool)"></span>命中数<b>${g.hits}</b></div><div class="mat"><span class="sw" style="background:var(--mon)"></span>力尽きた回数<b>${g.faints}</b></div><div class="mat"><span class="sw" style="background:var(--hp)"></span>使った回復薬<b>${10 - g.p.pots}</b></div>`;
   NET.dropAll(); scene.remove(g.rig.root); scene.remove(g.m.rig.root); cleanupScene(); G = null; $('hud').classList.remove('on');
@@ -2284,7 +2385,7 @@ const NET = (() => {
   };
 
   N.setWeapon = wid => { if (!N.on) return; const r = N.roster.get(N.myId); if (r) r.wid = wid; if (N.host) sendRoster(); else N.send({ t: 'w', wid }); renderLobby(); };
-  N.depart = () => { if (!N.host) return; N.send({ t: 'start', m: SAVE.m, r: [...N.roster] }); startHunt(); };
+  N.depart = () => { if (!N.host) return; N.send({ t: 'start', m: SAVE.m, rk: SAVE.rank | 0, r: [...N.roster] }); startHunt(); };
   N.onEnd = res => { if (N.host) N.send({ t: 'end', res }); };
   N.onMove = (m, def, mv) => {
     seq = (seq % 9999) + 1; m.seq = seq;
@@ -2328,7 +2429,7 @@ const NET = (() => {
   function onGuest(d) {
     if (d.t === 'roster') { N.roster.clear(); for (const [id, r] of d.r) N.roster.set(id, r); renderLobby(); renderNetBar(); }
     else if (d.t === 'full') { err('部屋が満員か、狩猟中です'); }
-    else if (d.t === 'start') { N.roster.clear(); for (const [id, r] of d.r) N.roster.set(id, r); SAVE.m = d.m; if (G) cleanupHunt(); startHunt(); }
+    else if (d.t === 'start') { N.roster.clear(); for (const [id, r] of d.r) N.roster.set(id, r); SAVE.m = d.m; SAVE.rank = d.rk | 0; if (G) cleanupHunt(); startHunt(); }
     else if (!G) return;
     else if (d.t === 's') {
       nm = d.m; const m = G.m;
